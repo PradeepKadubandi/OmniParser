@@ -74,9 +74,7 @@ def get_yolo_model(model_path):
     model = YOLO(model_path)
     return model
 
-
-@torch.inference_mode()
-def get_parsed_content_icon(filtered_boxes, starting_idx, image_source, caption_model_processor, prompt=None, batch_size=128):
+def process_bboxes_for_captioning(filtered_boxes, starting_idx, image_source):
     # Number of samples per batch, --> 128 roughly takes 4 GB of GPU memory for florence v2 model
     to_pil = ToPILImage()
     if starting_idx:
@@ -93,6 +91,11 @@ def get_parsed_content_icon(filtered_boxes, starting_idx, image_source, caption_
             croped_pil_image.append(to_pil(cropped_image))
         except:
             continue
+    return croped_pil_image
+
+@torch.inference_mode()
+def get_parsed_content_icon(filtered_boxes, starting_idx, image_source, caption_model_processor, prompt=None, batch_size=128):
+    croped_pil_image = process_bboxes_for_captioning(filtered_boxes, starting_idx, image_source)
 
     model, processor = caption_model_processor['model'], caption_model_processor['processor']
     if not prompt:
@@ -404,7 +407,23 @@ def int_box_area(box, w, h):
     area = (int_box[2] - int_box[0]) * (int_box[3] - int_box[1])
     return area
 
-def get_som_labeled_img(image_source: Union[str, Image.Image], model=None, BOX_TRESHOLD=0.01, output_coord_in_ratio=False, ocr_bbox=None, text_scale=0.4, text_padding=5, draw_bbox_config=None, caption_model_processor=None, ocr_text=[], use_local_semantics=True, iou_threshold=0.9,prompt=None, scale_img=False, imgsz=None, batch_size=128):
+def get_som_labeled_img(
+        image_source: Union[str, Image.Image], 
+        model=None, 
+        BOX_TRESHOLD=0.01, 
+        output_coord_in_ratio=False, 
+        ocr_bbox=None, 
+        text_scale=0.4, 
+        text_padding=5, 
+        draw_bbox_config=None, 
+        caption_model_processor=None, 
+        ocr_text=[], 
+        use_local_semantics=True, 
+        iou_threshold=0.9,
+        prompt=None, 
+        scale_img=False, 
+        imgsz=None, 
+        batch_size=128):
     """Process either an image path or Image object
     
     Args:
